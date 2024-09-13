@@ -5,12 +5,14 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+import logging
 
-
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
 # Telegram bot setup
-TELEGRAM_BOT_TOKEN = 'TELEGRAM_BOT_TOKEN'  # Replace with your actual bot token
-TELEGRAM_CHAT_ID = 'TELEGRAM_CHAT_ID'  # Replace with your chat ID
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')  # Retrieve from env
+TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')      # Retrieve from env
 
 DATABASE_URL = os.environ['DATABASE_URL']
 conn = psycopg2.connect(DATABASE_URL, sslmode='require')
@@ -39,7 +41,7 @@ def save_new_listings(new_listings):
     for listing in new_listings:
         cur.execute("""
             INSERT INTO listings (heading, price, area, link) 
-            VALUES (?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s)
             ON CONFLICT(link) DO NOTHING
         """, (listing['heading'], listing['price'], listing['area'], listing['link']))
     conn.commit()
@@ -50,9 +52,9 @@ def send_telegram_message(message):
     data = {'chat_id': TELEGRAM_CHAT_ID, 'text': message}
     response = requests.post(url, data=data)
     if response.status_code == 200:
-        print("Message sent successfully")
+        logging.info("Message sent successfully")
     else:
-        print("Failed to send message")
+        logging.error(f"Failed to send message: {response.text}")
 
 # Function to scrape new listings
 def scrape_listings():
@@ -64,16 +66,16 @@ def scrape_listings():
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.binary_location = os.environ.get("GOOGLE_CHROME_BIN", "/app/.apt/usr/bin/google-chrome")
 
-    # Initialize the WebDriver with headless Chrome
-    driver = webdriver.Chrome(
-    service=Service(os.environ.get("CHROMEDRIVER_PATH", "/app/.chromedriver/bin/chromedriver")),
-    options=chrome_options
-    )
+    # Initialize the Service object with the Chromedriver path
+    service = Service(executable_path=os.environ.get("CHROMEDRIVER_PATH", "/app/.chromedriver/bin/chromedriver"))
 
+    # Initialize the WebDriver with the Service and options
+    driver = webdriver.Chrome(service=service, options=chrome_options)
 
-
-    driver.get(
-        'your_kv.ee_link')
+    # Replace 'your_kv.ee_link' with the actual URL you intend to scrape
+    target_url = 'https://www.kv.ee'  # Example URL; replace with your actual target
+    logging.info(f"Navigating to {target_url}")
+    driver.get(target_url)
     html_text = driver.page_source
     soup = BeautifulSoup(html_text, 'lxml')
     driver.quit()
@@ -98,9 +100,10 @@ def scrape_listings():
                 'heading': heading,
                 'price': price,
                 'area': area,
-                'link': f"https://www.kv.ee{link}"
+                'link': f"https://www.kv.ee/search?deal_type=2&county=1&parish=1061&city%5B0%5D=5701&city%5B1%5D=1003&city%5B2%5D=1004&rooms_min=2&price_min=600&price_max=700&area_total_min=45&f%5B31%5D=1&f%5B84%5D=1"
             })
 
+    logging.info(f"Scraped {len(listings)} listings")
     return listings
 
 # Function to compare and update listings
@@ -115,28 +118,30 @@ def compare_and_update_listings():
     ]
 
     if new_listings:
-        print("New listings found!")
+        logging.info("New listings found!")
         for listing in new_listings:
             message = f"New Listing:\n{listing['heading']}\nPrice: {listing['price']}\nArea: {listing['area']}\nLink: {listing['link']}"
             send_telegram_message(message)
         save_new_listings(new_listings)
     else:
-        print("No new listings found.")
-
+        logging.info("No new listings found.")
 
     return new_listings
 
 # Run the function to compare and update the listings
 if __name__ == '__main__':
-    create_table()
-    new_listings = compare_and_update_listings()
+    try:
+        create_table()
+        new_listings = compare_and_update_listings()
 
-    if new_listings:
-        for listing in new_listings:
-            print(f"New Listing: {listing['heading']} - {listing['price']} - {listing['area']} - {listing['link']}")
-    else:
-        print("No new listings to show.")
-
-    # Close the cursor and connection when done
-    cur.close()
-    conn.close()
+        if new_listings:
+            for listing in new_listings:
+                logging.info(f"New Listing: {listing['heading']} - {listing['price']} - {listing['area']} - {listing['link']}")
+        else:
+            logging.info("No new listings to show.")
+    except Exception as e:
+        logging.error(f"An error occurred: {e}")
+    finally:
+        # Close the cursor and connection when done
+        cur.close()
+        conn.close()
