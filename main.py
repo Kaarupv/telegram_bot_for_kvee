@@ -14,6 +14,7 @@ logging.basicConfig(level=logging.INFO)
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')  # Retrieve from env
 TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')      # Retrieve from env
 
+# Database setup
 DATABASE_URL = os.environ['DATABASE_URL']
 conn = psycopg2.connect(DATABASE_URL, sslmode='require')
 cur = conn.cursor()
@@ -64,14 +65,14 @@ def scrape_listings():
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.binary_location = os.environ.get("GOOGLE_CHROME_BIN", "/app/.apt/usr/bin/google-chrome")
-
+    chrome_options.binary_location = os.environ.get("GOOGLE_CHROME_BIN", "/app/.chrome-for-testing/chrome-linux64/chrome")
+    
     # Initialize the Service object with the Chromedriver path
-    service = Service(executable_path=os.environ.get("CHROME_DRIVER_PATH", "/app/.chromedriver/bin/chromedriver"))
-
+    service = Service(executable_path=os.environ.get("CHROME_DRIVER_PATH", "/app/.chrome-for-testing/chromedriver-linux64/chromedriver"))
+    
     # Initialize the WebDriver with the Service and options
     driver = webdriver.Chrome(service=service, options=chrome_options)
-
+    
     # Replace 'your_kv.ee_link' with the actual URL you intend to scrape
     target_url = 'https://www.kv.ee/search?deal_type=2&county=1&parish=1061&city%5B0%5D=5701&city%5B1%5D=1003&city%5B2%5D=1004&rooms_min=2&price_min=600&price_max=700&area_total_min=45&f%5B31%5D=1&f%5B84%5D=1'  # Example URL; replace with your actual target
     logging.info(f"Navigating to {target_url}")
@@ -79,10 +80,10 @@ def scrape_listings():
     html_text = driver.page_source
     soup = BeautifulSoup(html_text, 'lxml')
     driver.quit()
-
+    
     listings = []
     articles = soup.find_all('article')
-
+    
     for article in articles:
         h2 = article.find('h2')
         if h2:
