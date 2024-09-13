@@ -66,46 +66,73 @@ def scrape_listings():
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.binary_location = os.environ.get("GOOGLE_CHROME_BIN", "/app/.chrome-for-testing/chrome-linux64/chrome")
-    
+
     # Initialize the Service object with the Chromedriver path
     service = Service(executable_path=os.environ.get("CHROME_DRIVER_PATH", "/app/.chrome-for-testing/chromedriver-linux64/chromedriver"))
-    
+
     # Initialize the WebDriver with the Service and options
     driver = webdriver.Chrome(service=service, options=chrome_options)
-    
-    # Replace 'your_kv.ee_link' with the actual URL you intend to scrape
-    target_url = 'https://www.kv.ee/search?deal_type=2&county=1&parish=1061&city%5B0%5D=5701&city%5B1%5D=1003&city%5B2%5D=1004&rooms_min=2&price_min=600&price_max=700&area_total_min=45&f%5B31%5D=1&f%5B84%5D=1'  # Example URL; replace with your actual target
+
+    # Target URL
+    target_url = 'https://www.kv.ee/search?deal_type=2&county=1&parish=1061&city%5B0%5D=5701&city%5B1%5D=1003&city%5B2%5D=1004&rooms_min=2&price_min=600&price_max=700&area_total_min=45&f%5B31%5D=1&f%5B84%5D=1'
     logging.info(f"Navigating to {target_url}")
     driver.get(target_url)
+
+    # Optional: Wait for the page to fully load
+    driver.implicitly_wait(10)  # Waits up to 10 seconds for elements to load
+
     html_text = driver.page_source
     soup = BeautifulSoup(html_text, 'lxml')
     driver.quit()
-    
+
+    # Find all article elements with class containing 'object-type-apartment'
+    articles = soup.find_all('article', class_=lambda x: x and 'object-type-apartment' in x)
+    logging.info(f"Found {len(articles)} <article> elements")
+
     listings = []
-    articles = soup.find_all('article')
-    
+
     for article in articles:
-        h2 = article.find('h2')
-        if h2:
-            for i_tag in h2.find_all('i'):
-                i_tag.decompose()  # Remove the <i> tags
+        description = article.find('div', class_='description')
+        if not description:
+            continue
 
-            heading = h2.get_text(strip=True)
-            price_div = article.find('div', class_='price')
-            price = price_div.get_text(strip=True) if price_div else "No price"
-            area_div = article.find('div', class_='area')
-            area = area_div.get_text(strip=True) if area_div else "No area"
-            link = h2.find('a', href=True)['href']
+        h2 = description.find('h2')
+        if not h2:
+            continue
 
-            listings.append({
-                'heading': heading,
-                'price': price,
-                'area': area,
-                'link': f"https://www.kv.ee{link}"
-            })
+        # Find all <a> tags within <h2>
+        a_tags = h2.find_all('a')
+        if len(a_tags) < 2:
+            continue
+
+        # The second <a> tag contains the address/title
+        heading_tag = a_tags[1]
+        heading = heading_tag.get_text(strip=True)
+
+        # Extract the href for the link
+        link = heading_tag.get('href')
+        if not link:
+            continue
+        full_link = f"https://www.kv.ee{link}"
+
+        # Extract price
+        price_div = article.find('div', class_='price')
+        price = price_div.get_text(strip=True) if price_div else "No price"
+
+        # Extract area
+        area_div = article.find('div', class_='area')
+        area = area_div.get_text(strip=True) if area_div else "No area"
+
+        listings.append({
+            'heading': heading,
+            'price': price,
+            'area': area,
+            'link': full_link
+        })
 
     logging.info(f"Scraped {len(listings)} listings")
     return listings
+
 
 # Function to compare and update listings
 def compare_and_update_listings():
