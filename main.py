@@ -5,7 +5,11 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import logging
+from selenium.common.exceptions import TimeoutException
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -78,8 +82,15 @@ def scrape_listings():
     logging.info(f"Navigating to {target_url}")
     driver.get(target_url)
 
-    # Optional: Wait for the page to fully load
-    driver.implicitly_wait(10)  # Waits up to 10 seconds for elements to load
+    try:
+        # Wait until at least one <article> element is present
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "article.object-type-apartment"))
+        )
+    except TimeoutException:
+        logging.error("Timed out waiting for page to load")
+        driver.quit()
+        return []
 
     html_text = driver.page_source
     soup = BeautifulSoup(html_text, 'lxml')
@@ -132,7 +143,6 @@ def scrape_listings():
 
     logging.info(f"Scraped {len(listings)} listings")
     return listings
-
 
 # Function to compare and update listings
 def compare_and_update_listings():
