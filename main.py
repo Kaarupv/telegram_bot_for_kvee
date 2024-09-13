@@ -66,9 +66,11 @@ def scrape_listings():
 
     # Initialize the WebDriver with headless Chrome
     driver = webdriver.Chrome(
-        executable_path=os.environ.get("CHROMEDRIVER_PATH", "/app/.chromedriver/bin/chromedriver"),
-        options=chrome_options
-    )  # Add "service=service" if specifying path
+    service=Service(os.environ.get("CHROMEDRIVER_PATH", "/app/.chromedriver/bin/chromedriver")),
+    options=chrome_options
+    )
+
+
 
     driver.get(
         'your_kv.ee_link')
