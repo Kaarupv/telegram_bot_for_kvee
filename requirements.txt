@@ -1,0 +1,5 @@
+beautifulsoup4==4.12.3
+psycopg2==2.9.9
+Requests==2.32.3
+selenium==4.23.1
+lxml==4.9.3
