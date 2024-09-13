@@ -67,13 +67,13 @@ def scrape_listings():
     chrome_options.binary_location = os.environ.get("GOOGLE_CHROME_BIN", "/app/.apt/usr/bin/google-chrome")
 
     # Initialize the Service object with the Chromedriver path
-    service = Service(executable_path=os.environ.get("CHROMEDRIVER_PATH", "/app/.chromedriver/bin/chromedriver"))
+    service = Service(executable_path=os.environ.get("CHROME_DRIVER_PATH", "/app/.chromedriver/bin/chromedriver"))
 
     # Initialize the WebDriver with the Service and options
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
     # Replace 'your_kv.ee_link' with the actual URL you intend to scrape
-    target_url = 'https://www.kv.ee'  # Example URL; replace with your actual target
+    target_url = 'https://www.kv.ee/search?deal_type=2&county=1&parish=1061&city%5B0%5D=5701&city%5B1%5D=1003&city%5B2%5D=1004&rooms_min=2&price_min=600&price_max=700&area_total_min=45&f%5B31%5D=1&f%5B84%5D=1'  # Example URL; replace with your actual target
     logging.info(f"Navigating to {target_url}")
     driver.get(target_url)
     html_text = driver.page_source
@@ -100,7 +100,7 @@ def scrape_listings():
                 'heading': heading,
                 'price': price,
                 'area': area,
-                'link': f"https://www.kv.ee/search?deal_type=2&county=1&parish=1061&city%5B0%5D=5701&city%5B1%5D=1003&city%5B2%5D=1004&rooms_min=2&price_min=600&price_max=700&area_total_min=45&f%5B31%5D=1&f%5B84%5D=1"
+                'link': f"https://www.kv.ee{link}"
             })
 
     logging.info(f"Scraped {len(listings)} listings")
