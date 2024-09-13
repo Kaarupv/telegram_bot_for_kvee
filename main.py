@@ -9,8 +9,8 @@ from selenium.webdriver.chrome.options import Options
 
 
 # Telegram bot setup
-TELEGRAM_BOT_TOKEN = 'your_api_key'  # Replace with your actual bot token
-TELEGRAM_CHAT_ID = 'your_api_key'  # Replace with your chat ID
+TELEGRAM_BOT_TOKEN = 'TELEGRAM_BOT_TOKEN'  # Replace with your actual bot token
+TELEGRAM_CHAT_ID = 'TELEGRAM_CHAT_ID'  # Replace with your chat ID
 
 DATABASE_URL = os.environ['DATABASE_URL']
 conn = psycopg2.connect(DATABASE_URL, sslmode='require')
@@ -62,12 +62,13 @@ def scrape_listings():
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-
-    # If Chromedriver is not in your PATH, specify the path
-    # service = Service('/path/to/chromedriver')
+    chrome_options.binary_location = os.environ.get("GOOGLE_CHROME_BIN", "/app/.apt/usr/bin/google-chrome")
 
     # Initialize the WebDriver with headless Chrome
-    driver = webdriver.Chrome(options=chrome_options)  # Add "service=service" if specifying path
+    driver = webdriver.Chrome(
+        executable_path=os.environ.get("CHROMEDRIVER_PATH", "/app/.chromedriver/bin/chromedriver"),
+        options=chrome_options
+    )  # Add "service=service" if specifying path
 
     driver.get(
         'your_kv.ee_link')
